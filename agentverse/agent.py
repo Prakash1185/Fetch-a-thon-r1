@@ -366,6 +366,18 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement) -> Non
     ctx.logger.debug("ack from %s for %s", sender, msg.acknowledged_msg_id)
 
 
+# Lightweight liveness only: no external calls, no fake "email sent" claims.
+@agent.on_event("startup")
+async def announce(ctx: Context) -> None:
+    ctx.logger.info("ScoutR Commander online | address=%s", ctx.agent.address)
+    ctx.logger.info("ACP ready | scout endpoint=%s", scout_endpoint())
+
+
+@agent.on_interval(period=60.0)
+async def heartbeat(ctx: Context) -> None:
+    ctx.logger.info("Commander heartbeat | ACP ready | endpoint=%s", scout_endpoint())
+
+
 agent.include(chat_protocol, publish_manifest=True)
 
 if __name__ == "__main__":
