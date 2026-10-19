@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, Outfit } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -16,20 +17,23 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "PulseScout AI · Swarm Intelligence Terminal",
+  title: "ScoutR · Market research, without the guesswork",
   description:
-    "Fetch.ai uAgent swarm that triangulates GitHub, arXiv and Hacker News into an AI battlecard.",
+    "ScoutR scans GitHub, arXiv and Hacker News, then writes you a clear battlecard on what to avoid and where the opening is.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={cn("dark", "h-full", "antialiased", outfit.variable, dmSans.variable)}
+      suppressHydrationWarning
+      className={cn("h-full", "antialiased", outfit.variable, dmSans.variable)}
     >
-      <body className="min-h-full">
-        <TooltipProvider>{children}</TooltipProvider>
-        <Toaster position="bottom-right" />
+      <body className="min-h-full transition-colors duration-300">
+        <ThemeProvider>
+          <TooltipProvider>{children}</TooltipProvider>
+          <Toaster position="bottom-right" />
+        </ThemeProvider>
       </body>
     </html>
   );
