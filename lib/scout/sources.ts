@@ -7,6 +7,11 @@ import type {
 const USER_AGENT = "SCOUT-OS/1.0 (competitive-intel; +https://github.com)";
 const TIMEOUT_MS = 12_000;
 
+// Curated "awesome" repos are useful reading lists, not competitors.
+const LIST_NAME_RE = /^awesome(?:[-_.]|$)/i;
+const LIST_DESC_RE =
+  /\b(?:awesome|curated)\s+list\b|\blist of (?:awesome|resources|tools|links)\b|\bcollection of (?:awesome|resources|tools|links)\b/i;
+
 export interface SourceResult<T> {
   ok: boolean;
   items: T[];
@@ -108,22 +113,29 @@ export async function fetchGitHubRepos(
       throw new Error(json.message ?? "Unexpected GitHub response shape");
     }
 
-    const items: RepoSignal[] = json.items.map((repo) => ({
-      id: repo.id,
-      name: repo.name,
-      fullName: repo.full_name,
-      url: repo.html_url,
-      description: repo.description ?? "No description provided.",
-      stars: repo.stargazers_count ?? 0,
-      forks: repo.forks_count ?? 0,
-      openIssues: repo.open_issues_count ?? 0,
-      language: repo.language ?? null,
-      topics: Array.isArray(repo.topics) ? repo.topics.slice(0, 8) : [],
-      pushedAt: repo.pushed_at,
-      createdAt: repo.created_at,
-      owner: repo.owner?.login ?? repo.full_name.split("/")[0] ?? "unknown",
-      license: repo.license?.spdx_id ?? null,
-    }));
+    const items: RepoSignal[] = json.items
+      .map((repo) => ({
+        id: repo.id,
+        name: repo.name,
+        fullName: repo.full_name,
+        url: repo.html_url,
+        description: repo.description ?? "No description provided.",
+        stars: repo.stargazers_count ?? 0,
+        forks: repo.forks_count ?? 0,
+        openIssues: repo.open_issues_count ?? 0,
+        language: repo.language ?? null,
+        topics: Array.isArray(repo.topics) ? repo.topics.slice(0, 8) : [],
+        pushedAt: repo.pushed_at,
+        createdAt: repo.created_at,
+        owner: repo.owner?.login ?? repo.full_name.split("/")[0] ?? "unknown",
+        license: repo.license?.spdx_id ?? null,
+      }))
+      .filter((repo) => {
+        if (LIST_NAME_RE.test(repo.name)) return false;
+        if (repo.topics.some((tag) => /^awesome(?:-list)?$/i.test(tag))) return false;
+        if (LIST_DESC_RE.test(repo.description)) return false;
+        return true;
+      });
 
     return { ok: true, items, latencyMs: Math.round(nowMs() - started) };
   } catch (error) {

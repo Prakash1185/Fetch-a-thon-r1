@@ -14,13 +14,13 @@ topic, and it fetches live signals from **GitHub**, **arXiv** and **Hacker News*
 **Repository:** [github.com/Prakash1185/Fetch-a-thon-r1](https://github.com/Prakash1185/Fetch-a-thon-r1)  
 **Agentverse agent:** [Commander_uAgent](https://agentverse.ai/agents/details/agent1qtkkfmpgt38yqccqazt2nkua9sffylcvkc6ryfg4mknnml5nxm6lx8txkxy)
 
-<!-- HERO IMAGE — optional
+HERO IMAGE — optional
 Add a screenshot at public/hero.png, then uncomment this block:
 
 <p align="center">
   <img src="./public/hero.png" alt="ScoutR dashboard" width="100%" />
 </p>
--->
+
 
 ---
 
