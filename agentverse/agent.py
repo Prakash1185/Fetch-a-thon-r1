@@ -2,7 +2,7 @@
 ScoutR Commander uAgent
 =======================
 
-Agent Chat Protocol (ACP) front door for the ScoutR swarm.
+Agent Chat Protocol (ACP) front door for ScoutR.
 
 Flow:
     ASI:One / Agentverse chat
@@ -71,7 +71,7 @@ HELP_WORDS = {
     "who are you?",
 }
 
-HELP_TEXT = """**ScoutR Commander** — competitive & research intel swarm.
+HELP_TEXT = """**ScoutR Commander** — competitive and research intelligence.
 
 Ask me to scout a market and I will check GitHub, arXiv and Hacker News, then return:
 
@@ -113,9 +113,7 @@ def parse_intent(raw: str) -> tuple[str, str | None, str]:
     mode_match = MODE_RE.search(text)
     if mode_match:
         mode = mode_match.group(1).lower().replace(" ", "-").replace("deepdive", "deep-dive")
-        if mode == "deep-dive":
-            pass
-        elif mode not in MODES:
+        if mode not in MODES:
             mode = default_mode()
         text = MODE_RE.sub(" ", text)
 
@@ -343,11 +341,18 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
 
     try:
         data = await call_scout(topic, email, mode)
+        email_state = data.get("email") or {}
+        if not email_state.get("requested"):
+            email_status = "off"
+        elif email_state.get("sent"):
+            email_status = "sent"
+        else:
+            email_status = "failed"
         ctx.logger.info(
             f"scout complete | topic={topic} | "
             f"signals={data.get('stats', {}).get('totalSignals')} | "
             f"engine={data.get('ai', {}).get('engine')} | "
-            f"email_sent={data.get('email', {}).get('sent')}"
+            f"email={email_status}"
         )
         reply = format_battlecard(data)
     except ScoutAPIError as exc:
@@ -377,7 +382,7 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement) -> Non
     ctx.logger.debug(f"ack from {sender} for {msg.acknowledged_msg_id}")
 
 
-# Lightweight liveness only: no external calls, no fake "email sent" claims.
+# Lightweight liveness only: no external calls and no success claims.
 @agent.on_event("startup")
 async def announce(ctx: Context) -> None:
     ctx.logger.info(f"ScoutR Commander online | address={ctx.agent.address}")

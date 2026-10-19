@@ -123,12 +123,3 @@ export interface ScoutErrorResponse {
   detail?: string;
   trace?: ScoutTraceEntry[];
 }
-
-export type SignalKind = "repo" | "paper" | "discussion";
-
-export interface SelectedSignal {
-  kind: SignalKind;
-  repo?: RepoSignal;
-  paper?: PaperSignal;
-  discussion?: DiscussionSignal;
-}

@@ -7,7 +7,6 @@ import {
   fetchHackerNews,
 } from "@/lib/scout/sources";
 import type {
-  ScoutAnalysis,
   ScoutErrorResponse,
   ScoutRequest,
   ScoutResponse,
@@ -66,22 +65,6 @@ function buildStats(
     combinedStars,
     avgPoints: Number(avgPoints.toFixed(1)),
     freshestSignalDays: dates.length ? Math.min(...dates) : null,
-  };
-}
-
-function mergeAnalysis(
-  primary: ScoutAnalysis,
-  fallback: ScoutAnalysis | null,
-): ScoutAnalysis {
-  if (!fallback) return primary;
-  return {
-    threatScore: Number.isFinite(primary.threatScore)
-      ? primary.threatScore
-      : fallback.threatScore,
-    sentiment: primary.sentiment || fallback.sentiment,
-    killZone: primary.killZone || fallback.killZone,
-    whiteSpaceMoat: primary.whiteSpaceMoat || fallback.whiteSpaceMoat,
-    deltaAlert: primary.deltaAlert || fallback.deltaAlert,
   };
 }
 
@@ -196,14 +179,15 @@ export async function POST(request: Request) {
     hackernews.items,
   );
 
+  const aiDetail = result.note ?? `${result.model} · threat ${result.analysis.threatScore}`;
   trace.push({
     step: `ai:${result.engine}`,
     status: result.engine === "gemini" ? "ok" : "warn",
-    detail: result.note ?? `${result.model} · threat ${result.analysis.threatScore}`,
+    detail: aiDetail.length > 240 ? `${aiDetail.slice(0, 239)}…` : aiDetail,
     ms: Date.now() - analysisStart,
   });
 
-  const analysis = mergeAnalysis(result.analysis, null);
+  const analysis = result.analysis;
 
   /* --- email dispatch ---------------------------------------------- */
   const generatedAt = new Date().toISOString();

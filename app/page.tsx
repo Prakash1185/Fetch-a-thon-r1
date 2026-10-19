@@ -20,7 +20,6 @@ import {
   MessageSquareIcon,
   RadarIcon,
   RocketIcon,
-  Settings2Icon,
   ShieldAlertIcon,
   SparklesIcon,
   StarIcon,
@@ -56,7 +55,6 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { formatCompact, formatInt, hostOf, relativeDays, shortDate } from "@/lib/scout/format";
@@ -149,7 +147,6 @@ function traceActor(step: string): string {
 export default function Home() {
   const [topic, setTopic] = useState("");
   const [email, setEmail] = useState("");
-  const [watchdog, setWatchdog] = useState(true);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ScoutResponse | null>(null);
   const [error, setError] = useState<ScoutErrorResponse | null>(null);
@@ -157,7 +154,6 @@ export default function Home() {
   const [clock, setClock] = useState<Date | null>(null);
 
   const [helpOpen, setHelpOpen] = useState(false);
-  const [prefsOpen, setPrefsOpen] = useState(false);
   const [battleOpen, setBattleOpen] = useState(false);
   const [signal, setSignal] = useState<Signal | null>(null);
   const [errorOpen, setErrorOpen] = useState(false);
@@ -177,9 +173,13 @@ export default function Home() {
   );
 
   useEffect(() => {
-    setClock(new Date());
-    const id = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(id);
+    const tick = () => setClock(new Date());
+    const initial = setTimeout(tick, 0);
+    const id = setInterval(tick, 1000);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(id);
+    };
   }, []);
 
   useEffect(() => {
@@ -187,9 +187,9 @@ export default function Home() {
     if (node) node.scrollTop = node.scrollHeight;
   }, [logs]);
 
-  const runSwarm = useCallback(
-    async (sendEmail: boolean) => {
-      const target = topic.trim();
+  const runScan = useCallback(
+    async (sendEmail: boolean, topicOverride?: string) => {
+      const target = (topicOverride ?? topic).trim();
       if (target.length < 2) {
         toast.error("Add a topic first", {
           description: "Even two words is enough to start a scan.",
@@ -217,7 +217,7 @@ export default function Home() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             topic: target,
-            alertEmail: email.trim(),
+            alertEmail: sendEmail ? email.trim() : "",
             mode: "recon",
           }),
         });
@@ -294,7 +294,7 @@ export default function Home() {
               ScoutR
             </div>
             <div className="hidden text-xs text-muted-foreground sm:block">
-              Agent-led market intel
+              Live competitive intel
             </div>
           </div>
 
@@ -304,43 +304,14 @@ export default function Home() {
 
           <div className="ml-auto flex items-center gap-2">
             <Badge variant="secondary" className="hidden gap-1.5 sm:inline-flex">
-              <span className="relative flex size-2 rounded-full">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-70" />
-                <span className="relative inline-flex size-2 rounded-full bg-primary" />
-              </span>
-              Commander online
+              <BotIcon className="size-3" />
+              Commander · ACP
             </Badge>
-
-            <div className="hidden items-center gap-2 lg:flex">
-              <Label htmlFor="watchdog" className="text-sm text-muted-foreground">
-                Auto-pilot alerts
-              </Label>
-              <Switch
-                id="watchdog"
-                checked={watchdog}
-                onCheckedChange={(checked) => {
-                  setWatchdog(checked);
-                  pushLog(
-                    "Commander",
-                    checked ? "Auto-pilot alerts turned on" : "Auto-pilot alerts turned off",
-                    checked ? "ok" : "warn",
-                  );
-                  toast.info(checked ? "Auto-pilot on" : "Auto-pilot off", {
-                    description: checked
-                      ? "We will re-check this market every 15 minutes."
-                      : "Automatic re-checks are paused.",
-                  });
-                }}
-              />
-            </div>
 
             <Button variant="ghost" size="icon" aria-label="How it works" onClick={() => setHelpOpen(true)}>
               <CircleHelpIcon />
             </Button>
             <ThemeToggle />
-            <Button variant="outline" size="icon" aria-label="Preferences" onClick={() => setPrefsOpen(true)}>
-              <Settings2Icon />
-            </Button>
           </div>
         </div>
       </header>
@@ -362,7 +333,7 @@ export default function Home() {
                 Almanac registered
               </Badge>
               <Badge variant="outline" className={CHIP.sky}>
-                ACP · ASI:One
+                ACP
               </Badge>
             </div>
             <CardDescription className="text-sm">
@@ -457,7 +428,7 @@ export default function Home() {
                   value={topic}
                   onChange={(event) => setTopic(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter") void runSwarm(false);
+                    if (event.key === "Enter") void runScan(false);
                   }}
                   placeholder="e.g. agent observability for LLM pipelines"
                   maxLength={200}
@@ -482,11 +453,11 @@ export default function Home() {
               <Button
                 size="lg"
                 className="h-10 w-full px-5 lg:w-auto"
-                onClick={() => void runSwarm(true)}
+                onClick={() => void runScan(Boolean(email.trim()))}
                 disabled={loading}
               >
                 {loading ? <BotIcon className="animate-pulse" /> : <RocketIcon />}
-                {loading ? "Scanning…" : "Scan & email me"}
+                {loading ? "Scanning…" : email.trim() ? "Scan & email me" : "Scan market"}
               </Button>
             </div>
 
@@ -500,16 +471,12 @@ export default function Home() {
                   disabled={loading}
                   onClick={() => {
                     setTopic(preset);
-                    void runSwarm(false);
+                    void runScan(false, preset);
                   }}
                 >
                   {preset}
                 </Button>
               ))}
-              <span className="ml-auto hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
-                <BellRingIcon className="size-3.5" />
-                {watchdog ? "Auto-pilot is on — we will email you new updates." : "Auto-pilot is off."}
-              </span>
             </div>
 
             {error ? (
@@ -684,9 +651,9 @@ export default function Home() {
                 variant="outline"
                 className="w-full"
                 disabled={loading || !data}
-                onClick={() => void runSwarm(true)}
+                onClick={() => void runScan(true)}
               >
-                <BellRingIcon /> Send a fresh update
+                <BellRingIcon /> Scan again & email
               </Button>
             </CardContent>
           </Card>
@@ -714,6 +681,17 @@ export default function Home() {
                   </div>
                 ) : data ? (
                   <>
+                    {data.ai.engine === "heuristic" ? (
+                      <Alert>
+                        <TriangleAlertIcon />
+                        <AlertTitle>Gemini unavailable</AlertTitle>
+                        <AlertDescription>
+                          This battlecard used the deterministic local scorer. The full report
+                          includes the API note.
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
+
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <Card>
                         <CardHeader>
@@ -1139,73 +1117,11 @@ export default function Home() {
             <Button
               onClick={() => {
                 setHelpOpen(false);
-                setTopic(topic || "AI code review");
+                setTopic("AI code review");
               }}
             >
-              Try it now <ArrowRightIcon />
+              Use example topic <ArrowRightIcon />
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* preferences */}
-      <Dialog open={prefsOpen} onOpenChange={setPrefsOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <Settings2Icon className="size-4" />
-              Preferences
-            </DialogTitle>
-            <DialogDescription className="text-sm">
-              Watchdog and delivery.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium">Auto-pilot alerts</span>
-                <span className="text-xs text-muted-foreground">
-                  Re-check the market every 15 minutes.
-                </span>
-              </div>
-              <Switch
-                checked={watchdog}
-                onCheckedChange={(checked) => setWatchdog(checked)}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="prefs-email" className="text-sm">
-                Default email
-              </Label>
-              <Input
-                id="prefs-email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@gmail.com"
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className={CHIP.teal}>
-                <BotIcon /> Gemini 2.5 Flash
-              </Badge>
-              <Badge variant="outline" className={CHIP.amber}>
-                <GitBranchIcon /> GitHub
-              </Badge>
-              <Badge variant="outline" className={CHIP.violet}>
-                <BookOpenIcon /> arXiv
-              </Badge>
-              <Badge variant="outline" className={CHIP.sky}>
-                <MessageSquareIcon /> Hacker News
-              </Badge>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button onClick={() => setPrefsOpen(false)}>Save & close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1283,6 +1199,12 @@ export default function Home() {
                     <MailIcon /> {data.email.sent ? `sent to ${data.email.to}` : "not emailed"}
                   </Badge>
                 </div>
+
+                {data.ai.note ? (
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {data.ai.note.slice(0, 300)}
+                  </p>
+                ) : null}
               </div>
             </ScrollArea>
           ) : null}
@@ -1453,7 +1375,7 @@ export default function Home() {
             <Button variant="outline" onClick={() => setErrorOpen(false)}>
               Close
             </Button>
-            <Button onClick={() => void runSwarm(true)}>Try again</Button>
+            <Button onClick={() => void runScan(Boolean(email.trim()))}>Try again</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

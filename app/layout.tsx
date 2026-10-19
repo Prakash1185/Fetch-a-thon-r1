@@ -17,9 +17,9 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "ScoutR · Market research, without the guesswork",
+  title: "ScoutR · Competitive intelligence from live sources",
   description:
-    "ScoutR scans GitHub, arXiv and Hacker News, then writes you a clear battlecard on what to avoid and where the opening is.",
+    "ScoutR scans GitHub, arXiv and Hacker News, then returns a battlecard with a threat score, what not to build and where the opening is.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
