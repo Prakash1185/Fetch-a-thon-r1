@@ -1,6 +1,7 @@
 import {
   GoogleGenerativeAI,
   SchemaType,
+  type GenerationConfig,
   type ResponseSchema,
 } from "@google/generative-ai";
 import type {
@@ -224,14 +225,21 @@ export async function analyzeSignals(
 
   try {
     const client = new GoogleGenerativeAI(apiKey);
+    // Gemini 2.5 Flash spends part of `maxOutputTokens` on internal thinking,
+    // which truncated the battlecard JSON. Disable thinking for this structured
+    // extraction task and keep a generous output cap as a safety net.
+    const generationConfig: GenerationConfig & {
+      thinkingConfig?: { thinkingBudget?: number };
+    } = {
+      responseMimeType: "application/json",
+      responseSchema: RESPONSE_SCHEMA,
+      temperature: 0.55,
+      maxOutputTokens: 8192,
+      thinkingConfig: { thinkingBudget: 0 },
+    };
     const model = client.getGenerativeModel({
       model: MODEL,
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA,
-        temperature: 0.55,
-        maxOutputTokens: 1400,
-      },
+      generationConfig,
       systemInstruction:
         "You are SCOUT, a competitive intelligence engine. You output only schema-valid JSON. You are blunt, specific and never generic.",
     });

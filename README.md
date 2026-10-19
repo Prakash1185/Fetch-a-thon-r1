@@ -1,36 +1,116 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ScoutR
 
-## Getting Started
+Autonomous competitive & research intelligence swarm for **Fetch-A-Thon 3.0**.
+ScoutR triangulates **GitHub**, **arXiv** and **Hacker News**, runs the evidence through
+**Gemini 2.5 Flash**, and returns a battlecard: threat score, the saturated kill-zone,
+the white-space opening, and what changed. Optional HTML battlecard delivery via Gmail.
 
-First, run the development server:
+The same pipeline is reachable from the web dashboard and from **ASI:One** through
+**Commander_uAgent** on Agentverse.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+Dashboard / ASI:One
+        |
+        v
+Commander_uAgent  (agentverse/agent.py, ACP)
+        |
+        v
+POST /api/scout
+        |
+        +--> CodeRadar  : GitHub REST search (stars)
+        +--> SciPulse   : arXiv Atom + HN Algolia
+        +--> Strategist : Gemini 2.5 Flash (strict JSON)
+        +--> Enforcer   : Nodemailer / Gmail SMTP
+        |
+        v
+Battlecard response + HTML email + trace log
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Run locally
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open http://localhost:3000. Environment variables live in `.env` (Next.js loads it
+automatically):
 
-## Learn More
+| Key | Required | Purpose |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | yes | Strategist analysis |
+| `GEMINI_MODEL` | no | Defaults to `gemini-2.5-flash` |
+| `GITHUB_TOKEN` | no | Raises GitHub rate limit 10 -> 30 req/min |
+| `GMAIL_USER` | for email | Gmail address |
+| `GMAIL_APP_PASSWORD` | for email | Gmail App Password (not the login password) |
 
-To learn more about Next.js, take a look at the following resources:
+Without Gemini the API falls back to a deterministic local scorer. Without Gmail the
+scan still succeeds and reports `email.sent: false`. No paid scraper APIs are used.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`POST /api/scout`
 
-## Deploy on Vercel
+```json
+{
+  "topic": "vector database",
+  "alertEmail": "you@example.com",
+  "mode": "recon"
+}
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `topic` — 2–200 characters (required)
+- `alertEmail` — optional; when present the HTML battlecard is emailed
+- `mode` — `rapid` | `recon` | `deep-dive` (defaults to `recon`)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Returns `success`, normalized items (`repositories`, `papers`, `discussions`), the
+`analysis` (`threatScore`, `sentiment`, `killZone`, `whiteSpaceMoat`, `deltaAlert`),
+source telemetry, stats, AI engine info, email status and a trace.
+
+`GET /api/scout` returns `405` with usage details.
+
+## Verify end-to-end
+
+With the server running:
+
+```bash
+node scripts/verify-scout.mjs --url http://localhost:3000
+```
+
+Checks the 405/400/422 guards, then runs a real scan and validates the battlecard shape,
+signals, source telemetry and trace. Pass `--email you@example.com` to exercise Gmail
+delivery (sends a real email), and `--topic` / `--mode` to change the scan.
+
+## Agentverse (ASI:One)
+
+See [`agentverse/README.md`](./agentverse/README.md) for the full setup. In short:
+
+1. Open the hosted agent on Agentverse -> **Build**.
+2. Paste [`agentverse/agent.py`](./agentverse/agent.py).
+3. Add secrets: `SCOUT_API_URL` (public deployment), optional `SCOUT_DEFAULT_EMAIL`,
+   optional `SCOUT_MODE`.
+4. Run and chat: `scout vector databases` or
+   `autonomous browser agents and email me at you@example.com`.
+
+Registered address shown in the dashboard:
+
+```
+agent1qtkkfmpgt38yqccqazt2nkua9sffylcvkc6ryfg4mknnml5nxm6lx8txkxy
+```
+
+Hosted agents cannot call `localhost`; deploy to Vercel (or expose a tunnel) and point
+`SCOUT_API_URL` there.
+
+## Stack
+
+Next.js App Router + TypeScript, Tailwind v4, shadcn UI, Gemini 2.5 Flash,
+Nodemailer, `uagents` + Agent Chat Protocol.
+
+## Notes
+
+- `next.config.ts` enables `cacheComponents`, so route-segment `runtime` / `dynamic`
+  exports are not allowed. `maxDuration = 60` is set on the scout route.
+- Scans are partial-failure tolerant: each source reports `ok`, `count`, `latencyMs`
+  and an optional `error` instead of failing the whole request.
+- The Agentverse agent holds no secrets beyond `SCOUT_API_URL`; Gemini and Gmail keys
+  stay in the Next.js deployment.

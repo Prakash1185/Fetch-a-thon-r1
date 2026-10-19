@@ -61,8 +61,10 @@ export async function fetchGitHubRepos(
 ): Promise<SourceResult<RepoSignal>> {
   const started = nowMs();
   const query = cleanTopic(topic);
-  const q = encodeURIComponent(`${query} in:name,description,readme stars:>2`);
-  const url = `https://api.github.com/search/repositories?q=${q}&sort=stars&order=desc&per_page=${limit}`;
+  // Name/description keeps the results relevant. For niche topics this can be
+  // too strict, so we retry with README matching only when results are sparse.
+  const primaryQuery = `${query} in:name,description stars:>2`;
+  const fallbackQuery = `${query} in:name,description,readme stars:>2`;
 
   try {
     const headers: Record<string, string> = {
@@ -74,12 +76,33 @@ export async function fetchGitHubRepos(
       headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
     }
 
-    const res = await fetch(url, {
-      headers,
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      cache: "no-store",
-    });
-    const json = await readJson<GitHubSearchResponse>(res);
+    const search = async (q: string) => {
+      const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(
+        q,
+      )}&sort=stars&order=desc&per_page=${limit}`;
+      const res = await fetch(url, {
+        headers,
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        cache: "no-store",
+      });
+      return readJson<GitHubSearchResponse>(res);
+    };
+
+    let json = await search(primaryQuery);
+
+    if (Array.isArray(json.items) && json.items.length < 4) {
+      try {
+        const fallback = await search(fallbackQuery);
+        if (
+          Array.isArray(fallback.items) &&
+          fallback.items.length > json.items.length
+        ) {
+          json = fallback;
+        }
+      } catch {
+        // Keep the primary result if the fallback is rate-limited or fails.
+      }
+    }
 
     if (!Array.isArray(json.items)) {
       throw new Error(json.message ?? "Unexpected GitHub response shape");

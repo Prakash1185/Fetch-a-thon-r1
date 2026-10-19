@@ -235,7 +235,7 @@ export function buildBattlecardHtml(input: {
 
   <tr><td style="padding:22px 24px 26px 24px;">
     <div style="border-top:1px solid ${LINE};padding-top:14px;font:400 10px/1.7 'Courier New',monospace;color:${MUTED};">
-      SCOUT OS · automated battlecard · sources: GitHub REST, arXiv Atom, HN Algolia<br/>
+      ScoutR Agent · automated battlecard · sources: GitHub REST, arXiv Atom, HN Algolia<br/>
       Threat scores are directional, not investment advice.
     </div>
   </td></tr>
@@ -278,7 +278,7 @@ export async function sendBattlecard(input: {
     });
 
     const info = await transporter.sendMail({
-      from: `"SCOUT OS" <${user}>`,
+      from: `"ScoutR Agent" <${user}>`,
       to: input.to,
       subject: `[SCOUT] ${input.topic} — threat ${Math.round(
         input.analysis.threatScore,
