@@ -14,8 +14,6 @@ topic, and it fetches live signals from **GitHub**, **arXiv** and **Hacker News*
 **Repository:** [github.com/Prakash1185/Fetch-a-thon-r1](https://github.com/Prakash1185/Fetch-a-thon-r1)  
 **Agentverse agent:** [Commander_uAgent](https://agentverse.ai/agents/details/agent1qtkkfmpgt38yqccqazt2nkua9sffylcvkc6ryfg4mknnml5nxm6lx8txkxy)
 
-HERO IMAGE — optional
-Add a screenshot at public/hero.png, then uncomment this block:
 
 <p align="center">
   <img src="./public/hero.png" alt="ScoutR dashboard" width="100%" />
@@ -270,6 +268,9 @@ scripts/
   state. Worker steps appear when the API responds.
 - **Modes are prompt hints.** `rapid`, `recon` and `deep-dive` change the instruction sent
   to Gemini; they do not change source limits.
+- **GitHub results are filtered.** Curated “awesome” lists are excluded, and a repository
+  must contain the main topic terms close together in its name, description or topics.
+  Fewer relevant repos are better than a fake competitor.
 - **Scores are directional.** The threat score is generated from the fetched signals, not
   from paid market data. It is not investment advice.
 - **Email is Gmail-only.** Delivery requires a Gmail account and App Password.

@@ -528,13 +528,13 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          {/* top competitor */}
+          {/* top repository match */}
           <Card>
             <CardHeader>
-              <CardDescription className="text-sm">Biggest competitor</CardDescription>
+              <CardDescription className="text-sm">Top repo match</CardDescription>
               <CardAction>
                 <Badge variant="outline" className={CHIP.amber}>
-                  <GitBranchIcon /> top repo
+                  <GitBranchIcon /> most stars
                 </Badge>
               </CardAction>
             </CardHeader>

@@ -12,6 +12,68 @@ const LIST_NAME_RE = /^awesome(?:[-_.]|$)/i;
 const LIST_DESC_RE =
   /\b(?:awesome|curated)\s+list\b|\blist of (?:awesome|resources|tools|links)\b|\bcollection of (?:awesome|resources|tools|links)\b/i;
 
+const STOPWORDS = new Set([
+  "a",
+  "about",
+  "an",
+  "and",
+  "app",
+  "application",
+  "apps",
+  "are",
+  "as",
+  "at",
+  "be",
+  "best",
+  "build",
+  "building",
+  "can",
+  "could",
+  "create",
+  "develop",
+  "development",
+  "for",
+  "from",
+  "help",
+  "how",
+  "i",
+  "idea",
+  "in",
+  "into",
+  "is",
+  "it",
+  "looking",
+  "make",
+  "me",
+  "my",
+  "need",
+  "new",
+  "of",
+  "on",
+  "or",
+  "our",
+  "platform",
+  "please",
+  "project",
+  "service",
+  "services",
+  "site",
+  "startup",
+  "the",
+  "to",
+  "tool",
+  "tools",
+  "top",
+  "use",
+  "using",
+  "want",
+  "website",
+  "what",
+  "with",
+  "you",
+  "your",
+]);
+
 export interface SourceResult<T> {
   ok: boolean;
   items: T[];
@@ -25,6 +87,68 @@ function nowMs() {
 
 function cleanTopic(topic: string) {
   return topic.replace(/[<>"'`]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function topicTerms(topic: string): string[] {
+  const seen = new Set<string>();
+  const terms: string[] = [];
+
+  for (const raw of cleanTopic(topic).toLowerCase().split(/[^a-z0-9+#.]+/)) {
+    const term = raw.replace(/^\.+|\.+$/g, "");
+    if (term.length < 2 || STOPWORDS.has(term) || seen.has(term)) continue;
+    seen.add(term);
+    terms.push(term);
+    if (terms.length === 4) break;
+  }
+
+  return terms;
+}
+
+function singularize(word: string): string {
+  if (/(?:ss|us|is)$/i.test(word)) return word;
+  if (/ies$/i.test(word) && word.length > 4) return `${word.slice(0, -3)}y`;
+  if (/(?:xes|zes|ches|shes|sses)$/i.test(word)) return word.slice(0, -2);
+  if (/s$/i.test(word) && word.length > 3) return word.slice(0, -1);
+  return word;
+}
+
+function normalizeText(value: string): string {
+  return value.toLowerCase().replace(/[-_/]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function tokenMatches(token: string, term: string): boolean {
+  return singularize(token) === term;
+}
+
+function repoIsRelevant(repo: RepoSignal, terms: string[]): boolean {
+  if (terms.length === 0) return true;
+
+  const tokens = normalizeText(
+    `${repo.name} ${repo.fullName} ${repo.description} ${repo.topics.join(" ")}`,
+  )
+    .split(" ")
+    .filter(Boolean);
+  const anchors = terms.map(singularize);
+
+  if (anchors.length === 1) {
+    return tokens.some((token) => tokenMatches(token, anchors[0]));
+  }
+
+  // At least one adjacent pair of topic terms must appear close together.
+  // This keeps "time management" while rejecting "time table + college management".
+  for (let index = 0; index < anchors.length - 1; index += 1) {
+    const first = anchors[index];
+    const second = anchors[index + 1];
+    const found = tokens.some((token, position) => {
+      if (!tokenMatches(token, first)) return false;
+      return tokens
+        .slice(position + 1, position + 5)
+        .some((near) => tokenMatches(near, second));
+    });
+    if (found) return true;
+  }
+
+  return false;
 }
 
 async function readJson<T>(res: Response): Promise<T> {
@@ -66,10 +190,23 @@ export async function fetchGitHubRepos(
 ): Promise<SourceResult<RepoSignal>> {
   const started = nowMs();
   const query = cleanTopic(topic);
-  // Name/description keeps the results relevant. For niche topics this can be
-  // too strict, so we retry with README matching only when results are sparse.
-  const primaryQuery = `${query} in:name,description stars:>2`;
-  const fallbackQuery = `${query} in:name,description,readme stars:>2`;
+  const terms = topicTerms(query);
+
+  // Search the head phrase instead of every filler word. For "time management
+  // for students" this becomes: "time management" students in:name,description.
+  const phrase =
+    terms.length >= 2
+      ? `${terms[0]} ${singularize(terms[1])}`
+      : (terms[0] ?? query);
+  const extra = terms[2];
+  const primaryQuery =
+    terms.length >= 2
+      ? `"${phrase}"${extra ? ` ${extra}` : ""} in:name,description stars:>2`
+      : `${phrase} in:name,description stars:>2`;
+  const fallbackQuery =
+    terms.length >= 2
+      ? `"${phrase}" in:name,description stars:>2`
+      : `${query} in:name,description,readme stars:>2`;
 
   try {
     const headers: Record<string, string> = {
@@ -134,7 +271,7 @@ export async function fetchGitHubRepos(
         if (LIST_NAME_RE.test(repo.name)) return false;
         if (repo.topics.some((tag) => /^awesome(?:-list)?$/i.test(tag))) return false;
         if (LIST_DESC_RE.test(repo.description)) return false;
-        return true;
+        return repoIsRelevant(repo, terms);
       });
 
     return { ok: true, items, latencyMs: Math.round(nowMs() - started) };
