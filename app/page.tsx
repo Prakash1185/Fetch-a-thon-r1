@@ -107,14 +107,6 @@ const CHIP = {
     "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
 } as const;
 
-const AGENT_STAGES = [
-  { agent: "Commander", message: "dispatch → github + arxiv + hn" },
-  { agent: "CodeRadar", message: "github search · sort=stars" },
-  { agent: "SciPulse", message: "arxiv query + hn algolia" },
-  { agent: "Strategist", message: "gemini strict-json synthesis" },
-  { agent: "Enforcer", message: "smtp dispatch · nodemailer" },
-];
-
 function stamp(): string {
   return new Date().toLocaleTimeString("en-GB", { hour12: false });
 }
@@ -145,6 +137,15 @@ function levelDot(level: LogLevel) {
   return "bg-muted-foreground/60";
 }
 
+function traceActor(step: string): string {
+  if (step === "ingest") return "Commander";
+  if (step === "scrape:github") return "CodeRadar";
+  if (step.startsWith("scrape:")) return "SciPulse";
+  if (step.startsWith("ai:")) return "Strategist";
+  if (step === "email") return "Enforcer";
+  return "Pipeline";
+}
+
 export default function Home() {
   const [topic, setTopic] = useState("");
   const [email, setEmail] = useState("");
@@ -163,7 +164,6 @@ export default function Home() {
 
   const logSeq = useRef(0);
   const consoleRef = useRef<HTMLDivElement | null>(null);
-  const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const pushLog = useCallback(
     (agent: string, message: string, level: LogLevel = "info") => {
@@ -187,12 +187,6 @@ export default function Home() {
     if (node) node.scrollTop = node.scrollHeight;
   }, [logs]);
 
-  useEffect(() => {
-    return () => {
-      if (stageTimer.current) clearInterval(stageTimer.current);
-    };
-  }, []);
-
   const runSwarm = useCallback(
     async (sendEmail: boolean) => {
       const target = topic.trim();
@@ -209,22 +203,11 @@ export default function Home() {
         return;
       }
 
-      if (stageTimer.current) clearInterval(stageTimer.current);
       setLoading(true);
       setError(null);
       setLogs([]);
-      pushLog("Commander", `Starting a scan for “${target}”`, "ok");
-
-      let stage = 0;
-      stageTimer.current = setInterval(() => {
-        const step = AGENT_STAGES[stage % AGENT_STAGES.length];
-        pushLog(step.agent, step.message, "info");
-        stage += 1;
-        if (stage >= AGENT_STAGES.length * 3 && stageTimer.current) {
-          clearInterval(stageTimer.current);
-          stageTimer.current = null;
-        }
-      }, 900);
+      pushLog("Dashboard", `Scan requested for “${target}”`, "ok");
+      pushLog("Pipeline", "POST /api/scout → live sources + Gemini", "info");
 
       const started = performance.now();
 
@@ -244,7 +227,7 @@ export default function Home() {
         if (!res.ok || payload.success !== true) {
           const failure = payload as ScoutErrorResponse;
           setError(failure);
-          pushLog("Commander", failure.error ?? "The scan failed.", "error");
+          pushLog("Pipeline", failure.error ?? "The scan failed.", "error");
           toast.error(failure.error ?? "Scan failed", {
             description: failure.detail,
           });
@@ -256,12 +239,12 @@ export default function Home() {
 
         payload.trace.forEach((entry: ScoutTraceEntry) => {
           pushLog(
-            entry.step,
+            traceActor(entry.step),
             entry.detail,
             entry.status === "error" ? "error" : entry.status === "warn" ? "warn" : "ok",
           );
         });
-        pushLog("Commander", `Finished: ${payload.stats.totalSignals} signals in ${elapsed}ms`, "ok");
+        pushLog("Pipeline", `Finished: ${payload.stats.totalSignals} signals in ${elapsed}ms`, "ok");
 
         toast.success("Your battlecard is ready", {
           description: `${payload.stats.totalSignals} signals found · competition ${Math.round(
@@ -281,15 +264,11 @@ export default function Home() {
       } catch (caught) {
         const message = caught instanceof Error ? caught.message : "Unknown error";
         setError({ success: false, error: "Could not reach the server", detail: message });
-        pushLog("Commander", `Network error: ${message}`, "error");
+        pushLog("Dashboard", `Network error: ${message}`, "error");
         toast.error("Could not reach the server", {
           description: "Please check your connection and try again.",
         });
       } finally {
-        if (stageTimer.current) {
-          clearInterval(stageTimer.current);
-          stageTimer.current = null;
-        }
         setLoading(false);
       }
     },
@@ -1036,10 +1015,10 @@ export default function Home() {
                 <span className={`flex size-8 items-center justify-center rounded-lg ${CHIP.teal}`}>
                   <BotIcon className="size-4" />
                 </span>
-                Agent telemetry
+                Execution trace
               </CardTitle>
               <CardDescription className="text-sm">
-                Commander dispatch + worker execution.
+                Real timings from the deployed pipeline.
               </CardDescription>
               <CardAction>
                 <Badge variant={loading ? "default" : "outline"}>
