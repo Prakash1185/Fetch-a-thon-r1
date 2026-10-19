@@ -138,7 +138,7 @@ function levelDot(level: LogLevel) {
 }
 
 function traceActor(step: string): string {
-  if (step === "ingest") return "Commander";
+  if (step === "ingest") return "Pipeline";
   if (step === "scrape:github") return "CodeRadar";
   if (step.startsWith("scrape:")) return "SciPulse";
   if (step.startsWith("ai:")) return "Strategist";
