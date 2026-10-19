@@ -319,7 +319,7 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     )
 
     text = (msg.text() or "").strip()
-    ctx.logger.info("intent from %s: %s", sender, text[:160])
+    ctx.logger.info(f"intent from {sender}: {text[:160]}")
 
     if not text or text.lower() in HELP_WORDS:
         await ctx.send(sender, create_chat(HELP_TEXT))
@@ -340,14 +340,14 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         data = await call_scout(topic, email, mode)
         reply = format_battlecard(data)
     except ScoutAPIError as exc:
-        ctx.logger.warning("scout API error: %s", exc)
+        ctx.logger.warning(f"scout API error: {exc}")
         reply = (
             f"Scout failed for **{topic}**: {clip(str(exc), 300)}\n\n"
             "If this is a hosted agent, check that `SCOUT_API_URL` points to the "
             "public Next.js deployment."
         )
     except httpx.HTTPError as exc:
-        ctx.logger.warning("scout API unreachable: %s", exc)
+        ctx.logger.warning(f"scout API unreachable: {exc}")
         reply = (
             f"Scout failed for **{topic}** — could not reach the Next.js API.\n\n"
             f"Endpoint: `{scout_endpoint()}`\n\n"
@@ -363,19 +363,19 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
 
 @chat_protocol.on_message(ChatAcknowledgement)
 async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement) -> None:
-    ctx.logger.debug("ack from %s for %s", sender, msg.acknowledged_msg_id)
+    ctx.logger.debug(f"ack from {sender} for {msg.acknowledged_msg_id}")
 
 
 # Lightweight liveness only: no external calls, no fake "email sent" claims.
 @agent.on_event("startup")
 async def announce(ctx: Context) -> None:
-    ctx.logger.info("ScoutR Commander online | address=%s", ctx.agent.address)
-    ctx.logger.info("ACP ready | scout endpoint=%s", scout_endpoint())
+    ctx.logger.info(f"ScoutR Commander online | address={ctx.agent.address}")
+    ctx.logger.info(f"ACP ready | scout endpoint={scout_endpoint()}")
 
 
 @agent.on_interval(period=60.0)
 async def heartbeat(ctx: Context) -> None:
-    ctx.logger.info("Commander heartbeat | ACP ready | endpoint=%s", scout_endpoint())
+    ctx.logger.info(f"Commander heartbeat | ACP ready | endpoint={scout_endpoint()}")
 
 
 agent.include(chat_protocol, publish_manifest=True)
