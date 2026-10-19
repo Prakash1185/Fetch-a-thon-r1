@@ -1,29 +1,3 @@
-"""
-ScoutR Commander uAgent
-=======================
-
-Agent Chat Protocol (ACP) front door for ScoutR.
-
-Flow:
-    ASI:One / Agentverse chat
-        -> this agent parses the intent
-        -> POST {SCOUT_API_URL}/api/scout
-        -> Next.js runs GitHub + arXiv + Hacker News + Gemini + Gmail
-        -> this agent sends the battlecard back into the chat
-
-Hosted on Agentverse: paste this file into the agent's Build tab.
-Local testing:       set AGENT_SEED and AGENT_MAILBOX=true, then run it.
-
-Environment (Agentverse -> Build -> Agent Secrets):
-    SCOUT_API_URL        Public URL of the Next.js app. Defaults to
-                         http://localhost:3000 (append /api/scout automatically).
-    SCOUT_DEFAULT_EMAIL  Optional. Send the battlecard here when the chat
-                         message does not include an email address.
-    SCOUT_MODE           Optional. rapid | recon | deep-dive. Default: recon.
-
-The agent never sees Gmail or Gemini keys - those stay inside Next.js.
-"""
-
 from __future__ import annotations
 
 import os
@@ -58,6 +32,24 @@ PREFIX_RE = re.compile(
     re.IGNORECASE,
 )
 TRAILING_RE = re.compile(r"[\s,.;:!?\-]+$")
+# ASI:One / Agentverse prepend the agent handle to the message text.
+MENTION_RE = re.compile(r"@[\w.-]+")
+# Filler adjectives that are not useful for source searches.
+FILLER_RE = re.compile(
+    r"\b(?:a|an|the|awesome|amazing|cool|great|best|top|modern|simple|easy|"
+    r"online|live|new)\b",
+    re.IGNORECASE,
+)
+# Conversational lead-ins that are not part of the market topic.
+CHATTER_RE = re.compile(
+    r"^(?:"
+    r"(?:hey|hi|hello|yo)[,\s]+(?:bro|there|team)?[,\s]*|"
+    r"(?:please\s+)?i\s+(?:want|need|would\s+like)\s+to\s+"
+    r"(?:build|create|make|launch|start)\s+|"
+    r"(?:please\s+)?help\s+me\s+(?:build|create|make|launch|start|research|scan|scout)\s+"
+    r")",
+    re.IGNORECASE,
+)
 HELP_WORDS = {
     "hi",
     "hello",
@@ -142,11 +134,16 @@ def parse_intent(raw: str) -> tuple[str, str | None, str]:
     else:
         email = os.getenv("SCOUT_DEFAULT_EMAIL", "").strip() or None
 
+    # Strip the ASI:One mention after email extraction, so emails survive.
+    text = MENTION_RE.sub(" ", text)
+
     previous = None
     while previous != text:
         previous = text
+        text = CHATTER_RE.sub("", text).strip()
         text = PREFIX_RE.sub("", text).strip()
 
+    text = FILLER_RE.sub(" ", text)
     text = text.strip("`'\"“”‘’ \t\n")
     text = TRAILING_RE.sub("", text)
     text = re.sub(r"\b(?:and|with|for|to|at|plus)\s*$", "", text, flags=re.IGNORECASE)
@@ -319,7 +316,8 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     text = (msg.text() or "").strip()
     ctx.logger.info(f"intent from {sender}: {text[:160]}")
 
-    if not text or text.lower() in HELP_WORDS:
+    help_text = MENTION_RE.sub(" ", text).strip().lower()
+    if not help_text or help_text in HELP_WORDS:
         await ctx.send(sender, create_chat(HELP_TEXT))
         return
 
@@ -359,8 +357,8 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         ctx.logger.warning(f"scout API error: {exc}")
         reply = (
             f"Scout failed for **{topic}**: {clip(str(exc), 300)}\n\n"
-            "If this is a hosted agent, check that `SCOUT_API_URL` points to the "
-            "public Next.js deployment."
+            "The API was reached, but it could not build a battlecard. "
+            "Try a broader or differently-worded topic."
         )
     except httpx.HTTPError as exc:
         ctx.logger.warning(f"scout API unreachable: {exc}")
