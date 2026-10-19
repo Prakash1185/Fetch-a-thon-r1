@@ -1094,7 +1094,7 @@ export default function Home() {
               {
                 icon: <InboxIcon className="size-4" />,
                 title: "3. You get a battlecard",
-                body: "What to avoid, where the opening is, and what changed — on screen and in your inbox.",
+                body: "What to avoid, where the opening is, and what changed — on screen, and in your inbox if you add an email.",
                 chip: CHIP.emerald,
               },
             ].map((step) => (

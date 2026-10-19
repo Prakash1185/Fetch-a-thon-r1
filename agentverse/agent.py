@@ -85,7 +85,7 @@ Ask me to scout a market and I will check GitHub, arXiv and Hacker News, then re
 • `autonomous browser agents mode:deep-dive`
 • `AI code review and email me at you@example.com`
 
-Email is optional. Add `mode:rapid|recon|deep-dive` to change the depth."""
+Email is optional. Add `mode:rapid|recon|deep-dive` to guide the analysis."""
 
 
 # --------------------------------------------------------------------------- #
