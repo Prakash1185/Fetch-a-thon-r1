@@ -336,8 +336,19 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         )
         return
 
+    ctx.logger.info(
+        f"dispatching scout | topic={topic} | mode={mode} | "
+        f"email={'on' if email else 'off'} | endpoint={scout_endpoint()}"
+    )
+
     try:
         data = await call_scout(topic, email, mode)
+        ctx.logger.info(
+            f"scout complete | topic={topic} | "
+            f"signals={data.get('stats', {}).get('totalSignals')} | "
+            f"engine={data.get('ai', {}).get('engine')} | "
+            f"email_sent={data.get('email', {}).get('sent')}"
+        )
         reply = format_battlecard(data)
     except ScoutAPIError as exc:
         ctx.logger.warning(f"scout API error: {exc}")
