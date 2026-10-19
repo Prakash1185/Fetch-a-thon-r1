@@ -5,6 +5,9 @@ chat messages through the **Agent Chat Protocol (ACP)** and forwards the intent 
 Next.js `/api/scout` endpoint. GitHub, arXiv, Hacker News, Gemini and Gmail all stay in
 Next.js — the agent only routes and formats.
 
+Commander is the only Almanac-registered uAgent. CodeRadar, SciPulse, Strategist and
+Enforcer are tool workers inside the Next.js pipeline, not separate registered agents.
+
 ```
 ASI:One / Agentverse chat
   -> Commander_uAgent (this file)
@@ -79,7 +82,7 @@ over the mailbox. Stop the hosted agent first, or use a separate test agent.
   News discussions, then returns a threat score, the saturated kill-zone, the white-space
   opening, and a delta alert. Optional email battlecard via Gmail SMTP.
 - **Keywords:** competitive intelligence, market research, github, arxiv, hacker news,
-  startup validation, research agent, multi-agent
+  startup validation, research agent, agent orchestration
 - **Example prompts:**
   - `Scout the vector database market`
   - `What is happening in autonomous browser agents?`

@@ -90,12 +90,12 @@ const AGENT_ADDRESS =
   "agent1qtkkfmpgt38yqccqazt2nkua9sffylcvkc6ryfg4mknnml5nxm6lx8txkxy";
 
 const AGENTS = [
-  { name: "Commander", role: "router" },
-  { name: "CodeRadar", role: "github" },
-  { name: "SciPulse", role: "arxiv · hn" },
-  { name: "Strategist", role: "gemini" },
-  { name: "Enforcer", role: "gmail" },
-];
+  { name: "Commander", role: "Agentverse · ACP", kind: "uAgent" },
+  { name: "CodeRadar", role: "GitHub live search", kind: "worker" },
+  { name: "SciPulse", role: "arXiv + Hacker News", kind: "worker" },
+  { name: "Strategist", role: "Gemini 2.5 Flash", kind: "worker" },
+  { name: "Enforcer", role: "Gmail SMTP", kind: "worker" },
+] as const;
 
 const CHIP = {
   teal: "border-primary/40 bg-primary/10 text-primary",
@@ -315,7 +315,7 @@ export default function Home() {
               ScoutR
             </div>
             <div className="hidden text-xs text-muted-foreground sm:block">
-              Autonomous intel swarm
+              Agent-led market intel
             </div>
           </div>
 
@@ -329,7 +329,7 @@ export default function Home() {
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-70" />
                 <span className="relative inline-flex size-2 rounded-full bg-primary" />
               </span>
-              Agents online
+              Commander online
             </Badge>
 
             <div className="hidden items-center gap-2 lg:flex">
@@ -376,8 +376,8 @@ export default function Home() {
                 Commander_uAgent
               </CardTitle>
               <Badge variant="outline" className={CHIP.emerald}>
-                <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
-                Agentverse online
+                <span className="size-1.5 rounded-full bg-emerald-500" />
+                Hosted
               </Badge>
               <Badge variant="outline" className={CHIP.violet}>
                 Almanac registered
@@ -387,7 +387,7 @@ export default function Home() {
               </Badge>
             </div>
             <CardDescription className="text-sm">
-              Agent Chat Protocol endpoint for the ScoutR swarm.
+              Almanac-registered ACP endpoint. Four tool workers execute the pipeline.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
@@ -431,15 +431,24 @@ export default function Home() {
                   key={agent.name}
                   className="flex items-center gap-2 rounded-md border bg-card px-3 py-2"
                 >
-                  <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-emerald-500" />
+                  <span
+                    className={`size-1.5 shrink-0 rounded-full ${
+                      agent.kind === "uAgent"
+                        ? "animate-pulse bg-emerald-500"
+                        : "bg-primary/70"
+                    }`}
+                  />
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate text-xs font-medium">{agent.name}</span>
                     <span className="truncate text-[10px] text-muted-foreground">
                       {agent.role}
                     </span>
                   </div>
-                  <Badge variant="secondary" className="ml-auto text-[10px]">
-                    online
+                  <Badge
+                    variant={agent.kind === "uAgent" ? "default" : "secondary"}
+                    className="ml-auto text-[10px]"
+                  >
+                    {agent.kind}
                   </Badge>
                 </div>
               ))}
@@ -811,7 +820,7 @@ export default function Home() {
                       </span>
                       <p className="font-heading text-base font-medium">No scan yet</p>
                       <p className="max-w-md text-center text-sm text-muted-foreground">
-                        Enter a topic and run the swarm.
+                        Enter a topic and run the scan.
                       </p>
                       <Button variant="outline" size="sm" onClick={() => setHelpOpen(true)}>
                         <CircleHelpIcon /> How does this work?
@@ -1030,7 +1039,7 @@ export default function Home() {
                 Agent telemetry
               </CardTitle>
               <CardDescription className="text-sm">
-                Live agent execution stream.
+                Commander dispatch + worker execution.
               </CardDescription>
               <CardAction>
                 <Badge variant={loading ? "default" : "outline"}>

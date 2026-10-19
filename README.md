@@ -1,12 +1,13 @@
 # ScoutR
 
-Autonomous competitive & research intelligence swarm for **Fetch-A-Thon 3.0**.
+Agent-led competitive & research intelligence for **Fetch-A-Thon 3.0**.
 ScoutR triangulates **GitHub**, **arXiv** and **Hacker News**, runs the evidence through
 **Gemini 2.5 Flash**, and returns a battlecard: threat score, the saturated kill-zone,
 the white-space opening, and what changed. Optional HTML battlecard delivery via Gmail.
 
 The same pipeline is reachable from the web dashboard and from **ASI:One** through
-**Commander_uAgent** on Agentverse.
+**Commander_uAgent** on Agentverse. Commander is the registered uAgent; CodeRadar,
+SciPulse, Strategist and Enforcer are tool workers inside the Next.js execution layer.
 
 ```
 Dashboard / ASI:One
