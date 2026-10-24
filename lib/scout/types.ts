@@ -123,3 +123,72 @@ export interface ScoutErrorResponse {
   detail?: string;
   trace?: ScoutTraceEntry[];
 }
+
+
+/* ---------- Autonomous Task Engine ---------- */
+
+export type TaskStatus =
+  | "pending"
+  | "running"
+  | "testing"
+  | "completed"
+  | "failed"
+  | "blocked";
+
+export type JobStatus =
+  | "queued"
+  | "researching"
+  | "planning"
+  | "executing"
+  | "completed"
+  | "failed"
+  | "blocked";
+
+export interface ScoutTask {
+  id: string;
+  jobId: string;
+  title: string;
+  description: string;
+  priority: number;
+  status: TaskStatus;
+  dependencies: string[];
+  acceptanceCriteria: string[];
+  attempts: number;
+  result?: string;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScoutExecutionLog {
+  id: string;
+  jobId: string;
+  taskId?: string;
+  timestamp: string;
+  level: "info" | "success" | "warning" | "error";
+  message: string;
+}
+
+export interface ScoutJob {
+  id: string;
+  topic: string;
+  status: JobStatus;
+  tasks: ScoutTask[];
+  logs: ScoutExecutionLog[];
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  error?: string;
+}
+
+export interface CreateScoutJobRequest {
+  topic: string;
+  mode?: ScoutMode;
+  alertEmail?: string;
+}
+
+export interface ScoutJobResponse {
+  success: boolean;
+  job?: ScoutJob;
+  error?: string;
+}
